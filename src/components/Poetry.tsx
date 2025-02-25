@@ -9,7 +9,8 @@ const WrapperContainer = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: linear-gradient(rgba(245, 245, 245, 0.9), rgba(245, 245, 245, 0.9)),
+  justify-content: center;
+  background: linear-gradient(rgba(0, 0, 0, 0.2), rgba(245, 245, 245, 0.9)),
               url('/src/assets/poetry-bg.jpg') center/cover no-repeat;
   position: relative;
 `;

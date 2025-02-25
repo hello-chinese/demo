@@ -4,11 +4,11 @@ import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const WrapperContainer = styled.div`
-  min-height: 100vh;
-  padding: 2rem;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   background: linear-gradient(rgba(245, 245, 245, 0.9), rgba(245, 245, 245, 0.9)),
               url('/src/assets/temple-bg.jpg') center/cover no-repeat;
   position: relative;
@@ -302,8 +302,8 @@ const Worship = () => {
                   rgba(255, 140, 0, 0.9),
                   rgba(255, 69, 0, 0.9))`,
                 boxShadow: '0 0 20px rgba(255, 69, 0, 0.5)',
-                animation: 'flicker 0.5s infinite alternate',
-                marginTop: '-180px'
+                animation: 'flicker 0.5s infinite alternate'
+                // 移除 marginTop: '-180px'
               }}
             >
               <p style={{ color: 'white' }}>{message}</p>

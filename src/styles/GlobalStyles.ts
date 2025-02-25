@@ -1,6 +1,20 @@
 import { createGlobalStyle } from 'styled-components';
 
 export const GlobalStyles = createGlobalStyle`
+  @keyframes rainDrop {
+    0% {
+      transform: translateY(-100vh);
+      opacity: 0;
+    }
+    50% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(100vh);
+      opacity: 0.3;
+    }
+  }
+
   :root {
     --primary-color: #2c3e50;
     --text-color: #333;

@@ -9,6 +9,44 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <style>
+      @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
+      }
+      
+      .ab1ac9d9bab12da47298 {
+        animation: shake 1.5s ease-in-out infinite;
+        position: relative;
+      }
+      
+      .chat-tip {
+        position: absolute;
+        right: 120%;
+        top: 50%;
+        transform: translateY(-50%);
+        background: #fff;
+        padding: 8px 12px;
+        border-radius: 6px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+        font-size: 14px;
+        white-space: nowrap;
+        color: #333;
+        z-index: 1000;
+      }
+      
+      .chat-tip::after {
+        content: '';
+        position: absolute;
+        right: -8px;
+        top: 50%;
+        transform: translateY(-50%);
+        border-left: 8px solid #fff;
+        border-top: 6px solid transparent;
+        border-bottom: 6px solid transparent;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
@@ -18,18 +56,46 @@
   <script>
     new CozeWebSDK.WebChatClient({
       config: {
-        bot_id: '7338713756349759526',
+        bot_id: '7475235732567834659',
       },
       componentProps: {
-        title: 'Coze',
+        title: '问答助手',
+        lang: 'zh-CN',
+        icon: 'https://cdn-static.huaxizi.cn/crm/98f671c29c1b46658132c852795abfd6.png'
       },
       auth: {
         type: 'token',
-        token: 'pat_********',
+        token: 'pat_CGL6tyIc0wRlmHZoiL9dzcbxJhAudDQIwzNXBGWM0eDm2JScBBqqaHb5yflJvwiP',
         onRefreshToken: function () {
-          return 'pat_********'
+          return 'pat_CGL6tyIc0wRlmHZoiL9dzcbxJhAudDQIwzNXBGWM0eDm2JScBBqqaHb5yflJvwiP'
         },
       },
     })
+
+    // 添加引导提示
+    setTimeout(() => {
+      const chatButton = document.querySelector('.ab1ac9d9bab12da47298');
+      if (chatButton) {
+        const tip = document.createElement('div');
+        tip.className = 'chat-tip';
+        tip.textContent = '有问题随时问我哦～';
+        chatButton.appendChild(tip);
+        
+        // 循环显示隐藏提示
+        setInterval(() => {
+          if (tip.style.display === 'none') {
+            tip.style.display = 'block';
+            setTimeout(() => {
+              tip.style.display = 'none';
+            }, 5000);
+          }
+        }, 7000);  // 5秒显示 + 2秒间隔
+        
+        // 初始的5秒后隐藏
+        setTimeout(() => {
+          tip.style.display = 'none';
+        }, 5000);
+      }
+    }, 1000);
   </script>
 </html>

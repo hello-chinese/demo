@@ -5,11 +5,12 @@ import { useNavigate } from 'react-router-dom';
 
 const WrapperContainer = styled.div`
   min-height: 100vh;
-  padding: 2rem;
+  // padding: 2rem;
   display: flex;
   flex-direction: column;
+  justify-content: center;
   align-items: center;
-  background: linear-gradient(rgba(245, 245, 245, 0.9), rgba(245, 245, 245, 0.9)),
+  background: linear-gradient(rgba(0, 0, 0, 0.2), rgba(245, 245, 245, 0.9)),
               url('/src/assets/kite-bg.jpg') center/cover no-repeat;
   position: relative;
 `;
@@ -72,6 +73,8 @@ const DirectionControls = styled.div`
     border: 2px solid var(--accent-color);
     border-radius: 8px;
     font-size: 1rem;
+    color: var(--accent-color);
+    font-weight: 600;
     transition: all 0.2s ease;
 
     &:hover {

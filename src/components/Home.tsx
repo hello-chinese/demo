@@ -8,7 +8,7 @@ const HomeContainer = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: linear-gradient(rgba(245, 245, 245, 0.1), rgba(245, 245, 245, 0.5))
+  background: linear-gradient(rgba(0, 0, 0, 0.2), rgba(245, 245, 245, 0.5)),
 `;
 
 const Title = styled.h1`
