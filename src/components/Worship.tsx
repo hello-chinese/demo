@@ -281,20 +281,12 @@ const Worship = () => {
           <BurningContainer>
             <BurningPaper
               initial={{ opacity: 1, scale: 1 }}
-              animate={[
-                { 
-                  opacity: 1, 
-                  scale: 1.1,
-                  filter: 'brightness(1.2)',
-                  transition: { duration: 0.5 } 
-                },
-                { 
-                  opacity: 0, 
-                  scale: 0.6,
-                  filter: 'brightness(1.5) blur(3px)',
-                  transition: { duration: 2.5 } 
-                }
-              ]}
+              animate={{
+                opacity: [1, 1, 0],
+                scale: [1, 1.1, 0.6],
+                filter: ['brightness(1)', 'brightness(1.2)', 'brightness(1.5) blur(3px)'],
+                transition: { duration: 2.5 }
+              }}
               exit={{ opacity: 0, scale: 0, filter: 'blur(5px)' }}
               style={{
                 background: `linear-gradient(45deg, 

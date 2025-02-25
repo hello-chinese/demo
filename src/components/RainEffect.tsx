@@ -11,14 +11,6 @@ const RainContainer = styled.div`
   z-index: 1;
 `;
 
-const RainDrop = styled.div`
-  position: absolute;
-  width: 2px;
-  height: 10px;
-  background: linear-gradient(transparent, rgba(255, 255, 255, 0.5));
-  animation: rainDrop 1s linear infinite;
-`;
-
 const RainEffect = () => {
   useEffect(() => {
     const container = document.querySelector('.rain-container');
