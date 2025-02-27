@@ -95,10 +95,12 @@ const DifficultyButtons = styled.div`
 
 const GameOverlay = styled.div<{ visible: boolean }>`
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  top: 50%;
+  left: 50%;
+  margin-top: 40px;
+  transform: translate(-50%, -50%);
+  width: 600px;
+  height: 400px;
   background-color: rgba(0, 0, 0, 0.7);
   display: ${props => (props.visible ? 'flex' : 'none')};
   flex-direction: column;
@@ -106,6 +108,7 @@ const GameOverlay = styled.div<{ visible: boolean }>`
   align-items: center;
   color: white;
   z-index: 10;
+  border-radius: 8px;
 `
 
 // 添加春季主题颜色
