@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>春日风筝飞行 - Spring Kite Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(to bottom, #87CEEB, #E0F7FA);
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 320px;
+            height: 480px;
+            overflow: hidden;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+        }
+        
+        #game-canvas {
+            background-color: transparent;
+        }
+        
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 10;
+        }
+        
+        .button {
+            padding: 10px 20px;
+            margin: 5px;
+            background-color: #FF6B6B;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        
+        .button:hover {
+            background-color: #FF5252;
+        }
+        
+        #score-display {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            z-index: 5;
+        }
+        
+        .difficulty-buttons {
+            display: flex;
+            flex-direction: column;
+            margin-top: 20px;
+        }
+        
+        #celebration {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 4;
+            display: none;
+        }
+        
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            opacity: 0.8;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas" width="320" height="480"></canvas>
+        <div id="score-display">分数: 0</div>
+        <div id="celebration"></div>
+        <div id="start-screen">
+            <h1>春日风筝飞行</h1>
+            <p>点击或按空格键使风筝上升</p>
+            <div class="difficulty-buttons">
+                <button class="button" id="easy-btn">简单模式</button>
+                <button class="button" id="medium-btn">普通模式</button>
+                <button class="button" id="hard-btn">困难模式</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const startScreen = document.getElementById('start-screen');
+        const scoreDisplay = document.getElementById('score-display');
+        const celebration = document.getElementById('celebration');
+        const easyBtn = document.getElementById('easy-btn');
+        const mediumBtn = document.getElementById('medium-btn');
+        const hardBtn = document.getElementById('hard-btn');
+        
+        // 游戏变量
+        let gameActive = false;
+        let score = 0;
+        let gameSpeed;
+        let gravity;
+        let gapSize;
+        
+        // 樱花花瓣粒子系统
+        const petals = [];
+        const petalColors = ['#FFCDD2', '#F8BBD0', '#FFD6E0', '#FFDDE3', '#FFDDF4'];
+        const petalCount = 20;
+        
+        class Petal {
+            constructor() {
+                this.reset();
+            }
+            
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = -20 - Math.random() * 30; // 开始于画布顶部之上
+                this.size = 5 + Math.random() * 5;
+                this.color = petalColors[Math.floor(Math.random() * petalColors.length)];
+                this.speed = 0.5 + Math.random() * 1;
+                this.angle = Math.random() * Math.PI * 2;
+                this.angularVelocity = (Math.random() - 0.5) * 0.02;
+                this.horizontalSpeed = (Math.random() - 0.5) * 1;
+            }
+            
+            update() {
+                this.y += this.speed;
+                this.x += this.horizontalSpeed;
+                this.angle += this.angularVelocity;
+                
+                // 如果花瓣离开屏幕,重置它
+                if (this.y > canvas.height + 20) {
+                    this.reset();
+                }
+            }
+            
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+                
+                // 绘制花瓣形状
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, this.size, this.size / 2, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
+            }
+        }
+        
+        // 初始化花瓣
+        for (let i = 0; i < petalCount; i++) {
+            petals.push(new Petal());
+        }
+        
+        // 风筝对象
+        const kite = {
+            x: 50,
+            y: canvas.height / 2,
+            width: 36,
+            height: 40,
+            velocity: 0,
+            lift: -8,
+            angle: 0,
+            targetAngle: 0,
+            
+            draw: function() {
+                // 根据运动方向设置目标角度
+                this.targetAngle = this.velocity * 0.05;
+                
+                // 平滑过渡当前角度到目标角度
+                this.angle = this.angle * 0.9 + this.targetAngle * 0.1;
+                
+                ctx.save();
+                ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+                ctx.rotate(this.angle);
+                
+                // 风筝主体 (六边形)
+                ctx.fillStyle = '#FF5252';
+                ctx.beginPath();
+                ctx.moveTo(0, -this.height / 2); // 顶点
+                ctx.lineTo(this.width / 3, -this.height / 3);
+                ctx.lineTo(this.width / 3, this.height / 3);
+                ctx.lineTo(0, this.height / 2); // 底点
+                ctx.lineTo(-this.width / 3, this.height / 3);
+                ctx.lineTo(-this.width / 3, -this.height / 3);
+                ctx.closePath();
+                ctx.fill();
+                
+                // 风筝装饰 - 黄色中心圆
+                ctx.fillStyle = '#FFEB3B';
+                ctx.beginPath();
+                ctx.arc(0, 0, this.width / 6, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 风筝骨架
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.lineWidth = 1;
+                
+                // 垂直骨架
+                ctx.beginPath();
+                ctx.moveTo(0, -this.height / 2);
+                ctx.lineTo(0, this.height / 2);
+                ctx.stroke();
+                
+                // 水平骨架
+                ctx.beginPath();
+                ctx.moveTo(-this.width / 3, 0);
+                ctx.lineTo(this.width / 3, 0);
+                ctx.stroke();
+                
+                // 风筝尾巴
+                ctx.strokeStyle = '#FFC107';
+                ctx.lineWidth = 2;
+                
+                // 主线
+                ctx.beginPath();
+                ctx.moveTo(0, this.height / 2);
+                
+                const tailLength = 50;
+                const timeOffset = Date.now() / 200;
+                
+                // 绘制随风摆动的尾巴主线
+                for (let i = 0; i < tailLength; i += 2) {
+                    const xOffset = Math.sin((i / 5 + timeOffset) * 0.5) * 3;
+                    ctx.lineTo(xOffset, this.height / 2 + i);
+                }
+                ctx.stroke();
+                
+                // 绘制装饰蝴蝶结
+                const bowPositions = [10, 25, 40];
+                
+                bowPositions.forEach(pos => {
+                    const bowSize = 5;
+                    const xPos = Math.sin((pos / 5 + timeOffset) * 0.5) * 3;
+                    
+                    ctx.fillStyle = pos % 20 === 0 ? '#FF9800' : '#4CAF50';
+                    
+                    // 蝴蝶结左边
+                    ctx.beginPath();
+                    ctx.ellipse(xPos - bowSize/2, this.height / 2 + pos, bowSize, bowSize/2, Math.PI/4, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // 蝴蝶结右边
+                    ctx.beginPath();
+                    ctx.ellipse(xPos + bowSize/2, this.height / 2 + pos, bowSize, bowSize/2, -Math.PI/4, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // 蝴蝶结中心
+                    ctx.fillStyle = '#FFEB3B';
+                    ctx.beginPath();
+                    ctx.arc(xPos, this.height / 2 + pos, bowSize/3, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                
+                // 风筝线
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(-this.width, this.height);
+                ctx.stroke();
+                
+                ctx.restore();
+            },
+            
+            update: function() {
+                this.velocity += gravity;
+                this.y += this.velocity;
+                
+                // 碰到地面或天花板
+                if (this.y + this.height > canvas.height) {
+                    this.y = canvas.height - this.height;
+                    this.velocity = 0;
+                    gameOver();
+                }
+                
+                if (this.y < 0) {
+                    this.y = 0;
+                    this.velocity = 0;
+                }
+            },
+            
+            flap: function() {
+                this.velocity = this.lift;
+            }
+        };
+        
+        // 障碍物数组
+        let pipes = [];
+        
+        // 障碍物类
+        class Pipe {
+            constructor() {
+                this.spacing = gapSize;
+                this.top = Math.floor(Math.random() * (canvas.height - this.spacing - 80)) + 20;
+                this.bottom = this.top + this.spacing;
+                this.x = canvas.width;
+                this.width = 60;
+                this.scored = false;
+                this.speed = gameSpeed;
+            }
+            
+            draw() {
+                // 上方障碍物 (柳树)
+                this.drawWillow(this.x, this.top, this.width, -canvas.height);
+                
+                // 下方障碍物 (柳树)
+                this.drawWillow(this.x, this.bottom, this.width, canvas.height - this.bottom);
+            }
+            
+            drawWillow(x, y, width, height) {
+                // 绘制柳树主干
+                ctx.fillStyle = '#8D6E63';
+                ctx.fillRect(x + width/2 - 5, y, 10, height);
+                
+                // 绘制柳树垂下的枝条
+                ctx.strokeStyle = '#A5D6A7';
+                ctx.lineWidth = 2;
+                
+                const branchCount = Math.abs(height) > 150 ? 12 : 8;
+                const branchSpacing = Math.abs(height) / branchCount;
+                
+                for (let i = 0; i < branchCount; i++) {
+                    const branchY = y + (height > 0 ? i * branchSpacing : -i * branchSpacing);
+                    const branchLength = width * 0.8;
+                    const wiggle = Math.sin(Date.now() / 2000 + i) * 5;
+                    
+                    // 左侧枝条
+                    ctx.beginPath();
+                    ctx.moveTo(x + width/2, branchY);
+                    
+                    // 控制点和结束点
+                    ctx.quadraticCurveTo(
+                        x + width/4, 
+                        branchY + (height > 0 ? 20 : -20) + wiggle, 
+                        x - 10, 
+                        branchY + (height > 0 ? 40 : -40) + wiggle
+                    );
+                    ctx.stroke();
+                    
+                    // 右侧枝条
+                    ctx.beginPath();
+                    ctx.moveTo(x + width/2, branchY);
+                    
+                    // 控制点和结束点
+                    ctx.quadraticCurveTo(
+                        x + width*3/4, 
+                        branchY + (height > 0 ? 20 : -20) - wiggle, 
+                        x + width + 10, 
+                        branchY + (height > 0 ? 40 : -40) - wiggle
+                    );
+                    ctx.stroke();
+                }
+                
+                // 添加一些樱花点缀
+                ctx.fillStyle = '#FFCDD2';
+                for (let i = 0; i < 8; i++) {
+                    const flowerX = x + Math.random() * width;
+                    const flowerY = y + (height > 0 ? Math.random() * Math.min(100, height) : Math.random() * Math.max(-100, height));
+                    
+                    // 小花朵
+                    const size = 2 + Math.random() * 2;
+                    ctx.beginPath();
+                    ctx.arc(flowerX, flowerY, size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                // 设置碰撞区域（看不见的障碍物）
+                if (height > 0) {
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+                    ctx.fillRect(x, y, width, height);
+                } else {
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+                    ctx.fillRect(x, y + height, width, -height);
+                }
+            }
+            
+            update() {
+                this.x -= this.speed;
+                
+                // 检查得分
+                if (!this.scored && this.x + this.width < kite.x) {
+                    score++;
+                    scoreDisplay.textContent = `分数: ${score}`;
+                    this.scored = true;
+                    
+                    // 如果分数超过5，触发庆祝动画
+                    if (score === 5) {
+                        startCelebration();
+                    }
+                }
+                
+                // 检查碰撞
+                if (this.hits(kite)) {
+                    gameOver();
+                }
+            }
+            
+            hits(bird) {
+                // 简化的碰撞检测 - 减小一点碰撞边界让游戏更友好
+                if (bird.x + bird.width * 0.8 > this.x && bird.x + bird.width * 0.2 < this.x + this.width) {
+                    if (bird.y + bird.height * 0.2 < this.top || bird.y + bird.height * 0.8 > this.bottom) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            
+            offscreen() {
+                return this.x + this.width < 0;
+            }
+        }
+        
+        // 绘制春季背景
+        function drawBackground() {
+            // 渐变天空 - 春日天空蓝
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#81D4FA'); // 顶部更浅的蓝色
+            gradient.addColorStop(0.6, '#B3E5FC'); // 中间偏淡蓝色
+            gradient.addColorStop(1, '#E1F5FE'); // 底部几乎白色的蓝
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制远处的山脉 - 春季带有一点绿意的山
+            ctx.fillStyle = '#C8E6C9';
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height - 100);
+            
+            // 创建山脉轮廓
+            for (let i = 0; i < canvas.width; i += 20) {
+                const height = Math.sin(i * 0.01) * 20 + 30;
+                ctx.lineTo(i, canvas.height - 100 + height);
+            }
+            
+            ctx.lineTo(canvas.width, canvas.height);
+            ctx.lineTo(0, canvas.height);
+            ctx.closePath();
+            ctx.fill();
+            
+            // 樱花树
+            drawCherryTree(20, canvas.height - 100, 60, 100);
+            drawCherryTree(canvas.width - 80, canvas.height - 100, 60, 100);
+            
+            // 春天的草地
+            ctx.fillStyle = '#A5D6A7';
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height - 40);
+            
+            // 波浪草地
+            for (let i = 0; i < canvas.width; i += 10) {
+                const height = Math.sin(i * 0.1) * 5;
+                ctx.lineTo(i, canvas.height - 10 + height);
+            }
+            
+            ctx.lineTo(canvas.width, canvas.height);
+            ctx.lineTo(0, canvas.height);
+            ctx.closePath();
+            ctx.fill();
+            
+            // 更新和绘制花瓣
+            petals.forEach(petal => {
+                petal.update();
+                petal.draw();
+            });
+        }
+        
+        // 樱花树
+        function drawCherryTree(x, y, width, height) {
+            // 树干
+            ctx.fillStyle = '#8D6E63';
+            ctx.fillRect(x + width/2 - 5, y - height, 10, height);
+            
+            // 树枝
+            ctx.beginPath();
+            ctx.moveTo(x + width/2, y - height);
+            ctx.lineTo(x + width/2 - 20, y - height - 15);
+            ctx.moveTo(x + width/2, y - height + 20);
+            ctx.lineTo(x + width/2 + 15, y - height - 10);
+            ctx.moveTo(x + width/2, y - height + 40);
+            ctx.lineTo(x + width/2 - 10, y - height + 10);
+            ctx.strokeStyle = '#8D6E63';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            
+            // 樱花
+            ctx.fillStyle = '#FFCDD2';
+            drawCherryBlossoms(x + width/2, y - height - 10, 25);
+            drawCherryBlossoms(x + width/2 - 15, y - height + 5, 20);
+            drawCherryBlossoms(x + width/2 + 15, y - height + 10, 22);
+        }
+        
+        // 樱花簇
+        function drawCherryBlossoms(x, y, size) {
+            for (let i = 0; i < 12; i++) {
+                const angle = Math.PI * 2 * i / 12;
+                const distance = Math.random() * size;
+                const xPos = x + Math.cos(angle) * distance;
+                const yPos = y + Math.sin(angle) * distance;
+                const flowerSize = 2 + Math.random() * 2;
+                
+                ctx.beginPath();
+                // 随机樱花颜色
+                ctx.fillStyle = Math.random() > 0.3 ? '#FFCDD2' : '#F8BBD0';
+                ctx.arc(xPos, yPos, flowerSize, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        // 生成障碍物
+        function addPipe() {
+            pipes.push(new Pipe());
+        }
+        
+        // 游戏循环
+        function gameLoop() {
+            if (!gameActive) return;
+            
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制背景
+            drawBackground();
+            
+            // 更新与绘制风筝
+            kite.update();
+            kite.draw();
+            
+            // 计时器，每隔一定时间添加新的障碍物
+            if (frameCount % 100 === 0) {
+                addPipe();
+            }
+            
+            // 更新和绘制所有障碍物
+            for (let i = pipes.length - 1; i >= 0; i--) {
+                pipes[i].update();
+                pipes[i].draw();
+                
+                // 移除屏幕外的障碍物
+                if (pipes[i].offscreen()) {
+                    pipes.splice(i, 1);
+                }
+            }
+            
+            frameCount++;
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // 游戏结束
+        function gameOver() {
+            gameActive = false;
+            startScreen.style.display = 'flex';
+            startScreen.innerHTML = `
+                <h1>游戏结束</h1>
+                <p>您的得分: ${score}</p>
+                <div class="difficulty-buttons">
+                    <button class="button" id="easy-btn">简单模式</button>
+                    <button class="button" id="medium-btn">普通模式</button>
+                    <button class="button" id="hard-btn">困难模式</button>
+                </div>
+            `;
+            
+            // 重新添加事件监听器
+            document.getElementById('easy-btn').addEventListener('click', () => startGame('easy'));
+            document.getElementById('medium-btn').addEventListener('click', () => startGame('medium'));
+            document.getElementById('hard-btn').addEventListener('click', () => startGame('hard'));
+        }
+        
+        // 庆祝动画
+        function startCelebration() {
+            celebration.style.display = 'block';
+            celebration.innerHTML = '';
+            
+            // 创建彩色纸屑
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + '%';
+                confetti.style.top = '-10px';
+                confetti.style.backgroundColor = getRandomColor();
+                confetti.style.transform = 'rotate(' + Math.random() * 360 + 'deg)';
+                celebration.appendChild(confetti);
+                
+                // 动画
+                animateConfetti(confetti);
+            }
+            
+            // 3秒后隐藏
+            setTimeout(() => {
+                celebration.style.display = 'none';
+            }, 3000);
+        }
+        
+        // 彩色纸屑动画
+        function animateConfetti(confetti) {
+            const speed = 2 + Math.random() * 3;
+            const rotation = Math.random() * 10 - 5;
+            const horizontalMovement = Math.random() * 6 - 3;
+            let top = parseInt(confetti.style.top);
+            let left = parseInt(confetti.style.left);
+            let rotate = 0;
+            
+            const animate = () => {
+                top += speed;
+                left += horizontalMovement * (Math.random() - 0.5);
+                rotate += rotation;
+                
+                confetti.style.top = top + 'px';
+                confetti.style.left = left + '%';
+                confetti.style.transform = 'rotate(' + rotate + 'deg)';
+                
+                if (top < canvas.height) {
+                    requestAnimationFrame(animate);
+                } else {
+                    confetti.remove();
+                }
+            };
+            
+            animate();
+        }
+        
+        // 随机颜色
+        function getRandomColor() {
+            const springColors = ['#FFCDD2', '#F8BBD0', '#E1BEE7', '#C5CAE9', '#BBDEFB', '#B3E5FC', '#B2EBF2', '#B2DFDB', '#C8E6C9', '#DCEDC8', '#F0F4C3', '#FFF9C4', '#FFECB3', '#FFE0B2', '#FFCCBC'];
+            return springColors[Math.floor(Math.random() * springColors.length)];
+        }
+        
+        // 游戏初始化与难度设置
+        function startGame(difficulty) {
+            // 根据难度设置参数
+            switch(difficulty) {
+                case 'easy':
+                    gameSpeed = 2;
+                    gravity = 0.4;
+                    gapSize = 160;
+                    break;
+                case 'medium':
+                    gameSpeed = 3;
+                    gravity = 0.5;
+                    gapSize = 140;
+                    break;
+                case 'hard':
+                    gameSpeed = 4;
+                    gravity = 0.6;
+                    gapSize = 120;
+                    break;
+            }
+            
+            // 重置游戏状态
+            pipes = [];
+            score = 0;
+            frameCount = 0;
+            scoreDisplay.textContent = `分数: ${score}`;
+            celebration.style.display = 'none';
+            
+            // 重置风筝位置
+            kite.y = canvas.height / 2;
+            kite.velocity = 0;
+            
+            // 隐藏开始界面，开始游戏
+            startScreen.style.display = 'none';
+            gameActive = true;
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // 添加事件监听器
+        easyBtn.addEventListener('click', () => startGame('easy'));
+        mediumBtn.addEventListener('click', () => startGame('medium'));
+        hardBtn.addEventListener('click', () => startGame('hard'));
+        
+        // 点击或空格键使风筝上升
+        document.addEventListener('click', () => {
+            if (gameActive) kite.flap();
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && gameActive) {
+                kite.flap();
+                e.preventDefault(); // 防止空格键滚动页面
+            }
+        });
+        
+        // 游戏帧计数
+        let frameCount = 0;
+        
+        // 初始绘制背景和风筝
+        drawBackground();
+        kite.draw();
+    </script>
+</body>
+</html>
